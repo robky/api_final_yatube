@@ -1,15 +1,13 @@
-# TODO:  Напишите свой вариант
-from django.shortcuts import get_list_or_404
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, filters
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 
 from posts.models import Follow, Group, Post, User
+from .permissions import FollowsPermission, OwnerOrReadOnly, ReadOnly
 from .serializers import (CommentSerializer, FollowSerializer,
                           GroupSerializer, PostSerializer)
-from .permissions import FollowsPermission, OwnerOrReadOnly, ReadOnly
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -29,21 +27,20 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, post=post)
 
     def get_permissions(self):
-        # Если в GET-запросе требуется получить информацию об объекте
         if self.action == 'retrieve':
-            # Вернем обновленный перечень используемых пермишенов
             return (ReadOnly(),)
-        # Для остальных ситуаций оставим текущий перечень пермишенов без
-        # изменений
         return super().get_permissions()
 
 
 class FollowViewSet(viewsets.ModelViewSet):
     serializer_class = FollowSerializer
     permission_classes = (FollowsPermission, IsAuthenticated)
+    filter_backends = (filters.SearchFilter, )
+    search_fields = ('following__username',)
 
     def get_queryset(self):
-        return get_list_or_404(Follow, user=self.request.user)
+        user = self.request.user
+        return user.follower
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -73,12 +70,8 @@ class PostViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def get_permissions(self):
-        # Если в GET-запросе требуется получить информацию об объекте
         if self.action == 'retrieve':
-            # Вернем обновленный перечень используемых пермишенов
             return (ReadOnly(),)
-        # Для остальных ситуаций оставим текущий перечень пермишенов без
-        # изменений
         return super().get_permissions()
 
     def perform_create(self, serializer):
