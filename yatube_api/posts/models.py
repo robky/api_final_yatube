@@ -50,3 +50,6 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         related_name='following'
     )
+
+    def __str__(self):
+        return f'{self.user} - {self.following}'

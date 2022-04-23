@@ -15,3 +15,11 @@ class OwnerOrReadOnly(permissions.BasePermission):
 class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in permissions.SAFE_METHODS
+
+
+class FollowsPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return (
+                request.method == 'GET'
+                or request.method == 'POST'
+        )

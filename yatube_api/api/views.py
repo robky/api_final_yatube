@@ -1,12 +1,15 @@
 # TODO:  Напишите свой вариант
-from rest_framework import viewsets, permissions
+from django.shortcuts import get_list_or_404
+from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated
 
-from posts.models import Follow, Group, Post
+from posts.models import Follow, Group, Post, User
 from .serializers import (CommentSerializer, FollowSerializer,
                           GroupSerializer, PostSerializer)
-from .permissions import OwnerOrReadOnly, ReadOnly
+from .permissions import FollowsPermission, OwnerOrReadOnly, ReadOnly
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -36,12 +39,25 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class FollowViewSet(viewsets.ModelViewSet):
-    queryset = Follow.objects.all()
     serializer_class = FollowSerializer
-    # permission_classes = (OwnerOrReadOnly,)
+    permission_classes = (FollowsPermission, IsAuthenticated)
+
+    def get_queryset(self):
+        return get_list_or_404(Follow, user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        user = self.request.user
+        following_name = serializer.initial_data.get('following')
+        following = get_object_or_404(
+            User,
+            username=following_name
+        )
+        if user == following:
+            raise ValidationError([f"Подписка на самого себя невозможна."])
+        if Follow.objects.filter(user=user, following=following).count():
+            raise ValidationError([f"Уже подписан на автора "
+                                   f"'{following_name}'."])
+        serializer.save(user=user, following=following)
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
