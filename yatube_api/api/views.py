@@ -50,7 +50,7 @@ class FollowViewSet(viewsets.ModelViewSet):
             username=following_name
         )
         if user == following:
-            raise ValidationError([f"Подписка на самого себя невозможна."])
+            raise ValidationError(["Подписка на самого себя невозможна."])
         if Follow.objects.filter(user=user, following=following).count():
             raise ValidationError([f"Уже подписан на автора "
                                    f"'{following_name}'."])
