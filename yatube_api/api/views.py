@@ -1,18 +1,16 @@
-from rest_framework import viewsets, permissions, filters
-from rest_framework.exceptions import ValidationError
+from rest_framework import viewsets, permissions, filters, mixins
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
 
-from posts.models import Follow, Group, Post, User
-from .permissions import FollowsPermission, OwnerOrReadOnly, ReadOnly
+from posts.models import Group, Post, User
+from .permissions import OwnerOrReadOnly, ReadOnly
 from .serializers import (CommentSerializer, FollowSerializer,
                           GroupSerializer, PostSerializer)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (OwnerOrReadOnly, )
+    permission_classes = (OwnerOrReadOnly,)
 
     def get_post(self):
         post_id = self.kwargs.get("post_id")
@@ -32,10 +30,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
-class FollowViewSet(viewsets.ModelViewSet):
+class FollowViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
     serializer_class = FollowSerializer
-    permission_classes = (FollowsPermission, IsAuthenticated)
-    filter_backends = (filters.SearchFilter, )
+    filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
 
     def get_queryset(self):
@@ -49,15 +47,11 @@ class FollowViewSet(viewsets.ModelViewSet):
             User,
             username=following_name
         )
-        if user == following:
-            raise ValidationError(["Подписка на самого себя невозможна."])
-        if Follow.objects.filter(user=user, following=following).count():
-            raise ValidationError([f"Уже подписан на автора "
-                                   f"'{following_name}'."])
         serializer.save(user=user, following=following)
 
 
-class GroupViewSet(viewsets.ReadOnlyModelViewSet):
+class GroupViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
+                   viewsets.GenericViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)

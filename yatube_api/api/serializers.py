@@ -11,13 +11,26 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    user = SlugRelatedField(slug_field='username', read_only=True)
+    user = SlugRelatedField(slug_field='username',
+                            queryset=User.objects.all(),
+                            default=serializers.CurrentUserDefault())
     following = SlugRelatedField(slug_field='username',
                                  queryset=User.objects.all())
 
     class Meta:
         model = Follow
         fields = ('user', 'following')
+
+    def validate(self, data):
+        user = data['user']
+        following = data['following']
+        if user == following:
+            raise serializers.ValidationError(
+                'Подписка на самого себя невозможна!')
+        if Follow.objects.filter(user=user, following=following).count():
+            raise serializers.ValidationError([f"Уже подписан на автора "
+                                               f"'{following.username}'."])
+        return data
 
 
 class PostSerializer(serializers.ModelSerializer):
