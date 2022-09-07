@@ -1,4 +1,4 @@
-# REST API для проекта YaTube
+# Учебный проект. REST API для проекта YaTube
 
 **YaTube** - https://github.com/robky/hw05_final
 
